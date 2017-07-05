@@ -16,17 +16,21 @@ rm(list=ls())
 library(nlme)
 
 ### load example data
+
 dat <- read.table("data.dat", header=TRUE, sep="\t")
 
 ### calculate PA and NA
+
 dat$pa <- rowMeans(dat[, grepl("pa", names(dat))])
 dat$na <- rowMeans(dat[, grepl("na", names(dat))])
 
 ### keep only variables that are needed
+
 dat <- dat[, c("id", "sex", "beep", "pa", "na")]
 
 ### change into very long format
-dat <- reshape(dat, direction="long", varying=c("pa", "na"), v.names="y", idvar="obs", timevar="outcome")
+
+dat <- reshape(dat, direction="long", varying=c("pa","na"), v.names="y", idvar="obs", timevar="outcome")
 dat$obs <- NULL
 dat <- dat[order(dat$id, dat$beep, dat$outcome),]
 rownames(dat) <- 1:nrow(dat)
@@ -37,7 +41,7 @@ dat$outcome <- factor(dat$outcome)
 
 ### fit multivariate multilevel model
 
-res <- lme(y ~ outcome*sex - 1,
+res <- lme(y ~ outcome*sex,
            random = ~ outcome - 1 | id,
            weights = varIdent(form = ~ 1 | outcome),
            correlation = corSymm(form = ~ outnum | id/beep),

@@ -21,7 +21,7 @@ dat <- read.table("data.dat", header=TRUE, sep="\t")
 
 ### change into very long format
 
-dat <- reshape(dat, direction="long", varying=c("pa1", "pa2", "pa3", "na1", "na2", "na3", "na4"), v.names="y", idvar="obs", timevar="item")
+dat <- reshape(dat, direction="long", varying=c("pa1","pa2","pa3","na1","na2","na3","na4"), v.names="y", idvar="obs", timevar="item")
 dat$obs <- NULL
 dat <- dat[order(dat$id, dat$beep, dat$item),]
 rownames(dat) <- 1:nrow(dat)
@@ -71,6 +71,11 @@ Rr <- cov2cor(R)
 round(Gr, 3)
 round(Rr, 3)
 
+### number of subjects and beeps
+
+n.id   <- length(unique(dat$id))
+n.beep <- length(unique(paste(dat$id, dat$beep, sep=".")))
+
 ### fit 2-factor (CFA) models with Gr and Rr matrices
 
 model <- matrix(c(
@@ -93,13 +98,13 @@ model <- matrix(c(
 'na4 <-> na4', 's2.na4',    NA),
 ncol=3, byrow=TRUE)
 
-res.sem.pers <- sem(model, Gr, N=res$dims$ngrps[1])
-res.sem.beep <- sem(model, Rr, N=res$dims$N, optimizer=optimizerNlminb)
+res.sem.pers <- sem(model, Gr, N=n.id)
+res.sem.beep <- sem(model, Rr, N=n.beep)
 
 summary(res.sem.pers, fit.indices=c("RMSEA","CFI","NNFI","SRMR"))
 summary(res.sem.beep, fit.indices=c("RMSEA","CFI","NNFI","SRMR"))
 
-### compute reliabilities of the PA and NA scales at the person and beep levels
+### compute reliabilities (McDonald's omega) of the PA and NA scales at the person and beep levels
 
 getvals <- function(x, pattern)
    unname(x[grepl(pattern, names(x), fixed=TRUE)])

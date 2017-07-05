@@ -16,17 +16,21 @@ rm(list=ls())
 library(nlme)
 
 ### load example data
+
 dat <- read.table("data.dat", header=TRUE, sep="\t")
 
 ### calculate PA and NA
+
 dat$pa <- rowMeans(dat[, grepl("pa", names(dat))])
 dat$na <- rowMeans(dat[, grepl("na", names(dat))])
 
 ### keep only variables that are needed
+
 dat <- dat[, c("id", "sex", "beep", "pa", "na")]
 
 ### change into very long format
-dat <- reshape(dat, direction="long", varying=c("pa", "na"), v.names="y", idvar="obs", timevar="outcome")
+
+dat <- reshape(dat, direction="long", varying=c("pa","na"), v.names="y", idvar="obs", timevar="outcome")
 dat$obs <- NULL
 dat <- dat[order(dat$id, dat$beep, dat$outcome),]
 rownames(dat) <- 1:nrow(dat)
@@ -46,6 +50,11 @@ res <- lme(y ~ outcome - 1,
                           msMaxIter=10000, msMaxEval=10000))
 summary(res)
 
+### number of subjects and beeps
+
+n.id   <- length(unique(dat$id))
+n.beep <- length(unique(paste(dat$id, dat$beep, sep=".")))
+
 ### get CIs for correlations at the person and beep levels with intervals()
 
 intervals(res)
@@ -57,9 +66,9 @@ getvals <- function(x, pattern)
 
 vals <- coef(res$modelStruct, unconstrained=FALSE)
 r <- getvals(vals, "cov") / sqrt(getvals(vals, "var(outcome1)") * getvals(vals, "var(outcome2)"))
-c(lower=tanh(atanh(r) - qnorm(.975) * sqrt(1 / (res$dims$ngrps[[1]] - 3))), estimate=r, upper=tanh(atanh(r) + qnorm(.975) * sqrt(1 / (res$dims$ngrps[[1]] - 3))))
+c(lower=tanh(atanh(r) - qnorm(.975) * sqrt(1 / (n.id - 3))), estimate=r, upper=tanh(atanh(r) + qnorm(.975) * sqrt(1 / (n.id - 3))))
 r <- getvals(coef(res$modelStruct, unconstrained=FALSE), "corStruct")
-c(lower=tanh(atanh(r) - qnorm(.975) * sqrt(1 / (res$dims$N/2 - 3))), estimate=r, upper=tanh(atanh(r) + qnorm(.975) * sqrt(1 / (res$dims$N/2 - 3))))
+c(lower=tanh(atanh(r) - qnorm(.975) * sqrt(1 / (n.beep - 3))), estimate=r, upper=tanh(atanh(r) + qnorm(.975) * sqrt(1 / (n.beep - 3))))
 
 ############################################################################
 
@@ -90,11 +99,16 @@ summary(sav[[2]])
 vals1 <- coef(sav[[1]]$modelStruct, unconstrained=FALSE)
 vals2 <- coef(sav[[2]]$modelStruct, unconstrained=FALSE)
 
+### number of subjects and beeps for the two groups
+
+n.id   <- sapply(split(dat$id, dat$sex), function(x) length(unique(x)))
+n.beep <- sapply(split(dat, dat$sex), function(dat) length(unique(paste(dat$id, dat$beep, sep="."))))
+
 ### test for significant difference between correlations at the person level (using Fisher transformation)
 
 r1 <- getvals(vals1, "cov") / sqrt(getvals(vals1, "var(outcome1)") * getvals(vals1, "var(outcome2)"))
 r2 <- getvals(vals2, "cov") / sqrt(getvals(vals2, "var(outcome1)") * getvals(vals2, "var(outcome2)"))
-z <- (atanh(r1) - atanh(r2)) / sqrt((1 / (sav[[1]]$dims$ngrps[[1]] - 3)) + (1 / (sav[[2]]$dims$ngrps[[1]] - 3)))
+z <- (atanh(r1) - atanh(r2)) / sqrt((1 / (n.id[[1]] - 3)) + (1 / (n.id[[2]] - 3)))
 z
 2*pnorm(abs(z), lower.tail=FALSE)
 
@@ -102,7 +116,7 @@ z
 
 r1 <- getvals(coef(sav[[1]]$modelStruct, unconstrained=FALSE), "corStruct")
 r2 <- getvals(coef(sav[[2]]$modelStruct, unconstrained=FALSE), "corStruct")
-z <- (atanh(r1) - atanh(r2)) / sqrt((1 / (sav[[1]]$dims$N/2 - 3)) + (1 / (sav[[2]]$dims$N/2 - 3)))
+z <- (atanh(r1) - atanh(r2)) / sqrt((1 / (n.beep[[1]] - 3)) + (1 / (n.beep[[2]] - 3)))
 z
 2*pnorm(abs(z), lower.tail=FALSE)
 
